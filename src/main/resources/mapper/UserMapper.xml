@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ln.mapper.UserMapper">
+
+    <resultMap id="usermap" type="UserBean">
+        <id property="id" column="id"/>
+        <result column="username" property="username"/>
+        <result property="password" column="password"/>
+        <result property="age" column="age"/>
+        <result property="birthday" column="birthday"/>
+        <result property="gid" column="gid"/>
+        <!--配置关联关系，关联关系，在resultmap，一对一必须配置在一对多前面，
+        可以是多个一对一，或者多个一对多-->
+        <association property="deptBean" javaType="DeptBean">
+            <id column="deptid" property="deptid"/>
+            <result property="dname" column="dname"/>
+        </association>
+        <association property="roleBean" javaType="RoleBean">
+            <id column="rid" property="rid"/>
+            <result property="rname" column="rname"/>
+        </association>
+    </resultMap>
+    <!--必须是左外连接查询，不能是内连接，
+    select * from t_user a,t_dept b where a.deptid = b.deptid
+    和inner join 是一个效果，在开发中，必须使用左外，左表中的数据全部出来，
+    和右表中和左表相关联的查出来，我们这个查询，要是内连接，没有部门的用户，
+    永远查不出来
+    -->
+    <select id="findAll" resultMap="usermap">
+        select * from t_user a
+        left join t_dept b on a.deptid = b.deptid
+        LEFT JOIN  t_role c on a.rid = c.rid
+        <where>
+        <if test="username!=null and username!=''">
+             a.username LIKE '%${username}%'
+        </if>
+            <if test="sbirthday!=null and sbirthday!='' and ebirthday!=null and ebirthday!=''">
+                and a.birthday between '${sbirthday}' and '${ebirthday}'
+            </if>
+        </where>
+    </select>
+    <select id="getPowerList" resultType="PowerBean">
+        select * from t_power
+    </select>
+    <!--根据id查询员工的信息-->
+    <select id="getUserById" resultMap="usermap">
+        select * from t_user a
+        left join t_dept b on a.deptid = b.deptid
+        LEFT JOIN  t_role c on a.rid = c.rid
+        where a.id=#{id}
+    </select>
+
+    <select id="getDeptList" resultType="DeptBean">
+        select * from t_dept
+    </select>
+
+    <!--查询部门的信息-->
+    <select id="getRoleListByDeptid" resultType="RoleBean">
+        select * from t_role where deptid = #{deptid}
+    </select>
+
+    <update id="saveUserDeptRole">
+        update t_user set deptid=#{deptid},rid=#{rid} where id=#{id}
+    </update>
+
+    <!--删除-->
+    <delete id="deleteuser">
+        delete from  t_user where id=#{id}
+    </delete>
+
+    <!--添加-->
+    <insert id="addUser">
+        insert  into t_user(`username`,`password`,`age`,`birthday`,deptid,rid) values (#{username},#{password},#{age},#{birthday},#{deptid},#{rid})
+    </insert>
+
+    <!--根据id查询对象-->
+    <select id="toupdate" resultType="User">
+        select * from t_user where id = #{id}
+    </select>
+
+    <!--修改-->
+    <update id="updateUser">
+        update t_user set username=#{username},`password`=#{password},age=#{age},birthday=#{birthday},deptid=#{deptid},rid=#{rid} where id=#{id}
+    </update>
+
+    <select id="getLogin" resultType="UserBean">
+        select * from t_user where username=#{username}
+    </select>
+
+    <select id="getPowerListByid" resultType="PowerBean">
+        select d.* from t_user a
+            left join t_role b on a.rid = b.rid
+            LEFT JOIN t_r_p c on b.rid = c.rid
+            LEFT JOIN t_power d on c.id = d.id
+            where a.id = #{id}
+    </select>
+
+    <select id="getRsSmoke" resultType="RsBean">
+        select * from t_smoke where cardno = #{cardno}
+    </select>
+    <select id="getRsWine" resultType="RsBean">
+        select * from t_wine where cardno = #{cardno}
+    </select>
+    <insert id="saveWine" parameterType="WineBean">
+        insert into t_wine(cardno,name,price,address,madetime,vol)
+        values(#{cardno},#{name},#{price},#{address},#{madedate},#{vol})
+    </insert>
+    <insert id="saveSmoke" parameterType="SmokeBean">
+        insert into t_smoke(cardno,name,price,address,madetime)
+        values(#{cardno},#{name},#{price},#{address},#{madedate})
+    </insert>
+
+    <insert id="insertPorcess" parameterType="ProcessBean">
+        <selectKey resultType="int" keyProperty="id" order="AFTER" keyColumn="id">
+            select last_insert_id()
+        </selectKey>
+        insert into t_process(sid,qjtime,stime,etime,qjcause,qjstatus,qjdate)
+        values(#{sid},#{qjtime},#{stime},#{etime},#{qjcause},#{qjstatus},#{qjdate})
+    </insert>
+
+    <select id="getGradeByGid" resultType="com.ln.entity.GradeBean">
+        select * from t_grade where gid=#{gid}
+    </select>
+
+    <insert id="insertPorcessPmx" parameterType="com.ln.entity.PmxBean">
+        insert into t_pmx(pid,userid,status,pstatus,pshunxu,shdate) values (#{pid},#{userid},#{status},#{pstatus},#{pshunxu},#{shdate})
+    </insert>
+
+    <select id="getStuQjListBySid" resultType="com.ln.entity.QjVo">
+        select * from t_process where sid = #{sid}
+    </select>
+    <select id="getUserIdByPid" resultType="int">
+        select userid from t_pmx where pstatus=1 and pid=#{pid}
+    </select>
+    <select id="getUserIdByPidMaxShunxu" resultType="int">
+        select userid from t_pmx
+        where pshunxu = (select max(pshunxu) from t_pmx where pid = #{pid})
+        and pid=#{pid}
+    </select>
+    <select id="getUserIdByPidNopass" resultType="int">
+        select userid from t_pmx
+        where status = 2 and pid=#{pid}
+    </select>
+    <select id="getUnameAndRnameById" resultType="QjVo">
+        select a.username uname,b.rname
+        from t_user a LEFT JOIN t_role b on a.rid = b.rid
+        where a.id=#{id}
+    </select>
+
+    <select id="getPidsByUserid" resultType="int">
+        select pid from t_pmx a where a.pstatus =1 and userid=#{userid}
+    </select>
+    <select id="getProcessById"  resultType="QjVo">
+        select * from t_process where id=#{id}
+    </select>
+    <select id="getStuInfoBySid" resultType="QjVo">
+        select a.username uname,b.gname
+        from t_user a LEFT JOIN t_grade b on a.gid = b.gid
+        where a.id = #{id}
+    </select>
+    <update id="updateProcessStatus">
+        update t_process set qjstatus=#{shstatus} where id=#{pid}
+    </update>
+    <update id="updatePmxStatus">
+        update t_pmx set status=#{shstatus},pstatus=2 where pid=#{pid} and userid=#{userid}
+    </update>
+    <select id="getQjMxInfo" resultType="int">
+        select pshunxu from t_pmx where pid=#{pid} and userid=#{userid}
+    </select>
+    <select id="getMaxPshunxu" resultType="int">
+        select max(pshunxu) from t_pmx where pid=#{pid}
+    </select>
+    <update id="updatePmxShunxu">
+        update t_pmx set pstatus = 1 where pid=#{pid} and pshunxu = #{pshunxu}
+    </update>
+
+</mapper>
